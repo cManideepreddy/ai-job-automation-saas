@@ -5,6 +5,7 @@ from app.config import UPLOAD_DIR
 from app.services.resume_parser import extract_resume_text
 from app.services.ats_engine import compute_ats_score
 from app.services.llm_service import get_ai_ats_feedback
+from app.services.job_matcher import get_top_job_matches
 
 router = APIRouter()
 
@@ -53,4 +54,16 @@ async def analyze_ats(
             "ai_analysis": {
                 "raw_response": str(e)
             }
+        }
+
+@router.post("/match-jobs")
+async def match_jobs(resume_text: str = Form(...)):
+    try:
+        result = get_top_job_matches(resume_text, top_n=5)
+        return result
+    except Exception as e:
+        return {
+            "resume_skills": [],
+            "top_matches": [],
+            "error": str(e)
         }
