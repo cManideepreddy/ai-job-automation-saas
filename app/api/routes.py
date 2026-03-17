@@ -6,6 +6,8 @@ from app.services.resume_parser import extract_resume_text
 from app.services.ats_engine import compute_ats_score
 from app.services.llm_service import get_ai_ats_feedback
 from app.services.job_matcher import get_top_job_matches
+from app.services.email_service import send_job_alert_email
+
 
 router = APIRouter()
 
@@ -66,4 +68,25 @@ async def match_jobs(resume_text: str = Form(...)):
             "resume_skills": [],
             "top_matches": [],
             "error": str(e)
+        }
+
+@router.post("/send-job-alerts")
+async def send_job_alerts(email: str = Form(...), resume_text: str = Form(...)):
+    try:
+        result = get_top_job_matches(resume_text)
+        jobs = result.get("top_matches", [])
+
+        success, message = send_job_alert_email(email, jobs)
+
+        return {
+            "status": "success" if success else "failed",
+            "message": message,
+            "jobs_sent": len(jobs)
+        }
+
+    except Exception as e:
+        return {
+            "status": "failed",
+            "message": str(e),
+            "jobs_sent": 0
         }
