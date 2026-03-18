@@ -45,7 +45,7 @@ def render_list(title: str, items: list, icon: str = "-"):
 
 def safe_post(url: str, **kwargs):
     try:
-        response = requests.post(url, timeout=60, **kwargs)
+        response = requests.post(url, timeout=600, **kwargs)
         return response
     except Exception as e:
         st.error(f"Request failed: {str(e)}")
