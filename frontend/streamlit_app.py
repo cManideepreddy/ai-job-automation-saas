@@ -2,9 +2,18 @@ import os
 import streamlit as st
 import requests
 
-BACKEND_URL = "http://127.0.0.1:8000"
+BACKEND_URL = os.getenv("BACKEND_URL")
+
+if not BACKEND_URL:
+    try:
+        BACKEND_URL = st.secrets["BACKEND_URL"]
+    except Exception:
+        BACKEND_URL = "http://127.0.0.1:8000"
+
+st.write("Using backend:", BACKEND_URL)
 
 st.set_page_config(page_title="ApplyPilot AI", layout="centered")
+
 
 # -------------------------
 # SESSION INIT
