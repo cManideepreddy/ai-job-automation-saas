@@ -1,43 +1,55 @@
 from app.services.text_analyzer import extract_skills, flatten_skills, detect_domain
 from app.services.job_fetcher import fetch_remoteok_jobs
+from app.data.sample_jobs import SAMPLE_JOBS
+
 
 def calculate_job_match(resume_skills, resume_domain, job):
     job_skills = job.get("skills", [])
     job_domain = job.get("domain", "general")
 
-    # Domain penalty
-    if resume_domain != job_domain:
-        penalty = 0.2
-    else:
-        penalty = 1.0
+    if not job_skills:
+        return None
+
+    penalty = 1.0 if resume_domain == job_domain else 0.2
 
     matched = list(set(resume_skills) & set(job_skills))
-    base_score = int((len(matched) / max(len(job_skills), 1)) * 100)
+    missing = list(set(job_skills) - set(resume_skills))
 
+    base_score = int((len(matched) / max(len(job_skills), 1)) * 100)
     final_score = int(base_score * penalty)
 
     return {
-        "title": job["title"],
-        "company": job["company"],
-        "link": job["link"],
+        "title": job.get("title", ""),
+        "company": job.get("company", ""),
+        "link": job.get("link", ""),
         "match_score": final_score,
         "job_domain": job_domain,
         "matched_skills": matched,
-        "missing_skills": list(set(job_skills) - set(resume_skills)),
+        "missing_skills": missing,
         "relevance": "Good" if final_score > 60 else "Low"
     }
+
 
 def get_top_job_matches(resume_text, top_n=5):
     resume_skills = flatten_skills(extract_skills(resume_text))
     resume_domain = detect_domain(resume_text)
 
-    jobs = fetch_remoteok_jobs()
+    try:
+        jobs = fetch_remoteok_jobs()
+    except Exception as e:
+        print("Remote job fetch failed:", e)
+        jobs = []
+
+    # Fallback to sample jobs if live fetch fails
+    if not jobs:
+        print("Using SAMPLE_JOBS fallback")
+        jobs = SAMPLE_JOBS
 
     results = []
 
     for job in jobs:
         match = calculate_job_match(resume_skills, resume_domain, job)
-        if match["match_score"] > 0:
+        if match and match["match_score"] > 0:
             results.append(match)
 
     results.sort(key=lambda x: x["match_score"], reverse=True)
