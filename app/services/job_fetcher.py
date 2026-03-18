@@ -1,39 +1,30 @@
 import requests
-
+from app.services.text_analyzer import extract_skills, flatten_skills, detect_domain
 
 def fetch_remoteok_jobs():
-    url = "https://remoteok.com/api"
-
     try:
-        response = requests.get(url)
-        data = response.json()
+        res = requests.get("https://remoteok.com/api", headers={"User-Agent": "Mozilla"})
+        data = res.json()
 
         jobs = []
 
-        # skip first metadata element
-        for item in data[1:]:
-            job = {
-                "id": item.get("id"),
-                "title": item.get("position"),
-                "company": item.get("company"),
-                "skills": extract_skills_from_text(item.get("description", "")),
-                "description": item.get("description", ""),
-                "link": item.get("url")
-            }
-            jobs.append(job)
+        for j in data[1:]:
+            text = (j.get("position", "") + " " + j.get("description", ""))
+
+            skills = flatten_skills(extract_skills(text))
+            domain = detect_domain(text)
+
+            jobs.append({
+                "id": j.get("id"),
+                "title": j.get("position"),
+                "company": j.get("company"),
+                "skills": skills,
+                "description": j.get("description"),
+                "link": j.get("url"),
+                "domain": domain
+            })
 
         return jobs
 
-    except Exception as e:
-        print("Error fetching jobs:", e)
+    except:
         return []
-
-
-def extract_skills_from_text(text):
-    keywords = [
-        "python", "sql", "aws", "gcp", "spark", "docker",
-        "kubernetes", "api", "linux", "react", "node"
-    ]
-
-    text = text.lower()
-    return [kw for kw in keywords if kw in text]

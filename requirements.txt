@@ -8,3 +8,7 @@ requests
 pydantic
 python-dotenv
 openai
+sqlalchemy
+passlib[bcrypt]
+python-jose
+email-validator

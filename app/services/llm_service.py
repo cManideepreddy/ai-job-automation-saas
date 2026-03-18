@@ -1,48 +1,35 @@
+import json
 from openai import OpenAI
 from app.config import OPENAI_API_KEY
 
 client = OpenAI(api_key=OPENAI_API_KEY)
 
+def get_ai_ats_feedback(resume_text, jd_text):
+    try:
+        prompt = f"""
+Compare resume and job description.
 
-def get_ai_ats_feedback(resume_text: str, job_description: str) -> dict:
-    prompt = f"""
-You are an expert ATS resume reviewer and career coach.
-
-Analyze the following resume against the job description.
-
-Return output in this exact JSON format:
+Return JSON:
 {{
-  "summary": "short summary",
-  "improvement_suggestions": [
-    "suggestion 1",
-    "suggestion 2",
-    "suggestion 3"
-  ],
-  "strong_points": [
-    "point 1",
-    "point 2"
-  ],
-  "missing_areas": [
-    "missing 1",
-    "missing 2"
-  ]
+"pros": [],
+"cons": [],
+"suggestions": [],
+"summary": ""
 }}
 
 Resume:
 {resume_text}
 
-Job Description:
-{job_description}
+JD:
+{jd_text}
 """
 
-    response = client.chat.completions.create(
-        model="gpt-4.1-mini",
-        messages=[
-            {"role": "system", "content": "You are a precise ATS analysis assistant."},
-            {"role": "user", "content": prompt}
-        ],
-        temperature=0.2
-    )
+        res = client.chat.completions.create(
+            model="gpt-4.1-mini",
+            messages=[{"role": "user", "content": prompt}]
+        )
 
-    content = response.choices[0].message.content
-    return {"raw_response": content}
+        return json.loads(res.choices[0].message.content)
+
+    except Exception as e:
+        return {"pros": [], "cons": [str(e)], "suggestions": [], "summary": "AI failed"}

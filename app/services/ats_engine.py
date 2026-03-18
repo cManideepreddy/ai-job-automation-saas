@@ -1,57 +1,50 @@
-import re
-from collections import Counter
+from app.services.text_analyzer import extract_skills, flatten_skills, detect_domain
 
+def compute_ats_score(resume_text, jd_text):
+    resume_skills = set(flatten_skills(extract_skills(resume_text)))
+    jd_skills = set(flatten_skills(extract_skills(jd_text)))
 
-COMMON_SKILLS = [
-    "python", "sql", "java", "aws", "gcp", "azure", "spark", "hadoop",
-    "fastapi", "docker", "kubernetes", "etl", "airflow", "linux",
-    "machine learning", "data engineering", "api", "git", "pandas"
-]
+    resume_domain = detect_domain(resume_text)
+    job_domain = detect_domain(jd_text)
 
+    # Skill score
+    matched = resume_skills & jd_skills
+    missing = jd_skills - resume_skills
 
-def extract_keywords(text: str) -> list[str]:
-    text_lower = text.lower()
-    found = []
+    skill_score = int((len(matched) / max(len(jd_skills), 1)) * 100)
 
-    for skill in COMMON_SKILLS:
-        if skill in text_lower:
-            found.append(skill)
+    # Domain score
+    domain_score = 100 if resume_domain == job_domain else 20
 
-    return sorted(list(set(found)))
+    final_score = int(skill_score * 0.7 + domain_score * 0.3)
 
-
-def compute_ats_score(resume_text: str, job_description: str) -> dict:
-    resume_keywords = extract_keywords(resume_text)
-    jd_keywords = extract_keywords(job_description)
-
-    matched = [kw for kw in jd_keywords if kw in resume_keywords]
-    missing = [kw for kw in jd_keywords if kw not in resume_keywords]
-
-    if not jd_keywords:
-        score = 50
-    else:
-        score = int((len(matched) / len(jd_keywords)) * 100)
-
-    score = max(0, min(score, 100))
-
+    pros = []
+    cons = []
     suggestions = []
-    if missing:
-        suggestions.append(f"Add or highlight these missing keywords: {', '.join(missing)}")
-    if score < 60:
-        suggestions.append("Your resume needs better alignment with the job description.")
-    if score >= 60:
-        suggestions.append("Your resume has decent alignment, but can still be improved for stronger ATS performance.")
 
-    summary = (
-        f"Resume matched {len(matched)} out of {len(jd_keywords)} important job keywords."
-        if jd_keywords else
-        "No standard keywords detected in the job description, so score is estimated."
-    )
+    if matched:
+        pros.append(f"Matched skills: {', '.join(list(matched)[:5])}")
+
+    if missing:
+        cons.append(f"Missing skills: {', '.join(list(missing)[:5])}")
+        suggestions.append(f"Add these skills if applicable: {', '.join(list(missing)[:5])}")
+
+    if resume_domain != job_domain:
+        cons.append(f"Domain mismatch: Resume={resume_domain}, Job={job_domain}")
+        suggestions.append("Apply for domain-relevant jobs or modify resume")
+
+    summary = "Strong match" if final_score > 70 else "Needs improvement"
 
     return {
-        "ats_score": score,
-        "matched_keywords": matched,
-        "missing_keywords": missing,
+        "ats_score": final_score,
+        "resume_domain": resume_domain,
+        "job_domain": job_domain,
+        "matched_keywords": list(matched),
+        "missing_keywords": list(missing),
+        "matched_required_skills": list(matched),
+        "missing_required_skills": list(missing),
+        "pros": pros,
+        "cons": cons,
         "suggestions": suggestions,
         "summary": summary
     }
