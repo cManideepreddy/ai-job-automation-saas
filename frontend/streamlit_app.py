@@ -196,7 +196,7 @@ if st.session_state.user_id:
                 f"{BACKEND_URL}/analyze-ats",
                 data={
                     "resume_text": st.session_state.resume_text,
-                    "job_description": job_description
+                    "job_description": job_description,
                     "email": st.session_state.email
                 }
             )
