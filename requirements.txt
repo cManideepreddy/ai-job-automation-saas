@@ -10,5 +10,7 @@ python-dotenv
 openai
 sqlalchemy
 passlib[bcrypt]
+bcrypt
 python-jose
 email-validator
+psycopg2-binary
