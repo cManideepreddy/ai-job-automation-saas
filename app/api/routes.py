@@ -2,6 +2,7 @@ import os
 import shutil
 from fastapi import APIRouter, UploadFile, File, Form, Depends
 from sqlalchemy.orm import Session
+from app.db.database_sqlite import cursor, conn
 
 from app.config import UPLOAD_DIR
 from app.services.resume_parser import extract_resume_text
@@ -46,24 +47,32 @@ async def upload_resume(file: UploadFile = File(...)):
 # ATS ANALYSIS
 # -----------------------
 @router.post("/analyze-ats")
-async def analyze_ats(resume_text: str = Form(...), job_description: str = Form(...)):
+async def analyze_ats(
+        resume_text: str = Form(...),
+        job_description: str = Form(...),
+        email: str = Form(None)  # 👈 ADD THIS
+):
     try:
         basic = compute_ats_score(resume_text, job_description)
         ai = get_ai_ats_feedback(resume_text, job_description)
+
+        # 🔥 SAVE TO DATABASE
+        if email:
+            cursor.execute(
+                "INSERT INTO user_activity (email, resume, ats_score) VALUES (?, ?, ?)",
+                (email, resume_text[:1000], basic.get("ats_score", 0))
+            )
+            conn.commit()
 
         return {
             "basic_analysis": basic,
             "ai_analysis": ai
         }
+
     except Exception as e:
         return {
             "basic_analysis": {},
-            "ai_analysis": {
-                "pros": [],
-                "cons": [str(e)],
-                "suggestions": [],
-                "summary": "Analysis failed."
-            }
+            "ai_analysis": {"error": str(e)}
         }
 
 # -----------------------
