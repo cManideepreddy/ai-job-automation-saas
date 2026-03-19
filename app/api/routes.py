@@ -248,3 +248,13 @@ def save_job_match(
 
     except Exception as e:
         return {"status": "failed", "message": str(e)}
+
+
+@router.get("/get-users")
+def get_users():
+    cursor.execute("SELECT * FROM user_activity ORDER BY id DESC LIMIT 5")
+    rows = cursor.fetchall()
+
+    return {
+        "data": rows
+    }
