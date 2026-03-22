@@ -1,35 +1,45 @@
-import json
+import os
 from openai import OpenAI
-from app.config import OPENAI_API_KEY
 
-client = OpenAI(api_key=OPENAI_API_KEY)
+client = OpenAI(api_key=os.getenv("OPENAI_API_KEY"))
 
-def get_ai_ats_feedback(resume_text, jd_text):
+def get_ai_ats_feedback(resume_text, job_description):
     try:
-        prompt = f"""
-Compare resume and job description.
-
-Return JSON:
-{{
-"pros": [],
-"cons": [],
-"suggestions": [],
-"summary": ""
-}}
+        response = client.chat.completions.create(
+            model="gpt-4o-mini",
+            messages=[
+                {"role": "system", "content": "You are an ATS expert."},
+                {"role": "user", "content": f"""
+Analyze this resume vs job description.
 
 Resume:
 {resume_text}
 
-JD:
-{jd_text}
-"""
+Job:
+{job_description}
 
-        res = client.chat.completions.create(
-            model="gpt-4.1-mini",
-            messages=[{"role": "user", "content": prompt}]
+Return:
+- pros
+- cons
+- suggestions
+- summary
+"""}
+            ]
         )
 
-        return json.loads(res.choices[0].message.content)
+        content = response.choices[0].message.content
+
+        return {
+            "pros": [],
+            "cons": [],
+            "suggestions": [],
+            "summary": content
+        }
 
     except Exception as e:
-        return {"pros": [], "cons": [str(e)], "suggestions": [], "summary": "AI failed"}
+        return {
+            "pros": [],
+            "cons": [],
+            "suggestions": [],
+            "summary": f"AI error: {str(e)}"
+        }
