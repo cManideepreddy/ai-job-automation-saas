@@ -2,6 +2,12 @@ import os
 import requests
 import streamlit as st
 
+# PDF
+from reportlab.platypus import SimpleDocTemplate, Paragraph, Spacer
+from reportlab.lib.styles import getSampleStyleSheet
+from reportlab.lib.pagesizes import A4
+import io
+
 # -------------------------
 # CONFIG
 # -------------------------
@@ -84,8 +90,22 @@ def pills(items, warn=False):
     html = "".join([f'<span class="{cls}">{i}</span>' for i in items])
     st.markdown(html, unsafe_allow_html=True)
 
+def generate_pdf(text):
+    buffer = io.BytesIO()
+    doc = SimpleDocTemplate(buffer, pagesize=A4)
+    styles = getSampleStyleSheet()
+
+    content = []
+    for line in text.split("\n"):
+        content.append(Paragraph(line, styles["Normal"]))
+        content.append(Spacer(1, 8))
+
+    doc.build(content)
+    buffer.seek(0)
+    return buffer
+
 # -------------------------
-# SIDEBAR LOGIN
+# SIDEBAR AUTH
 # -------------------------
 st.sidebar.title("ApplyPilot AI")
 
@@ -165,7 +185,6 @@ jd = st.text_area("Paste Job Description")
 col1, col2 = st.columns(2)
 analyze = col1.button("🔍 Analyze Resume")
 match = col2.button("🎯 Find Jobs")
-
 st.markdown('</div>', unsafe_allow_html=True)
 
 # -------------------------
@@ -176,9 +195,11 @@ if analyze:
         st.warning("Upload resume first")
     else:
         res = safe_post(f"{BACKEND_URL}/analyze-ats",
-                        data={"resume_text": st.session_state.resume_text,
-                              "job_description": jd,
-                              "email": st.session_state.email})
+                        data={
+                            "resume_text": st.session_state.resume_text,
+                            "job_description": jd,
+                            "email": st.session_state.email
+                        })
         if res:
             st.session_state.ats = res.json()
 
@@ -193,11 +214,11 @@ if st.session_state.ats:
     st.metric("ATS Score", f"{score}/100")
 
     if score < 50:
-        st.error("Low score")
+        st.error("⚠️ Low ATS Score")
     elif score < 75:
-        st.warning("Average score")
+        st.warning("⚡ Average ATS Score")
     else:
-        st.success("Excellent score")
+        st.success("🔥 Excellent ATS Score")
 
     col1, col2 = st.columns(2)
 
@@ -233,15 +254,13 @@ if match:
         st.session_state.jobs = res.json().get("top_matches", [])
 
 if st.session_state.jobs:
-    st.markdown('<div class="card">', unsafe_allow_html=True)
     st.subheader("4. Matching Jobs")
-    st.markdown('</div>', unsafe_allow_html=True)
 
     for job in st.session_state.jobs:
         st.markdown('<div class="card">', unsafe_allow_html=True)
 
         st.write(f"### {job['title']} - {job['company']}")
-        st.write("Score:", job["match_score"])
+        st.write("Match Score:", job["match_score"])
 
         pills(job.get("matched_skills", []))
         pills(job.get("missing_skills", []), True)
@@ -258,16 +277,34 @@ if st.session_state.jobs:
         st.markdown('</div>', unsafe_allow_html=True)
 
 # -------------------------
-# RESUME IMPROVE
+# RESUME IMPROVE + DOWNLOAD
 # -------------------------
 st.markdown('<div class="card">', unsafe_allow_html=True)
 st.subheader("5. Improve Resume")
 
 if st.button("🚀 Improve Resume"):
-    res = safe_post(f"{BACKEND_URL}/rewrite-resume",
-                    data={"resume_text": st.session_state.resume_text,
-                          "job_description": jd})
-    if res:
-        st.text_area("Improved Resume", res.json().get("improved_resume", ""), height=300)
+    if not st.session_state.resume_text or not jd:
+        st.warning("Upload resume and add job description first.")
+    else:
+        res = safe_post(f"{BACKEND_URL}/rewrite-resume",
+                        data={
+                            "resume_text": st.session_state.resume_text,
+                            "job_description": jd
+                        })
+        if res:
+            improved = res.json().get("improved_resume", "")
+
+            st.success("Resume improved successfully!")
+
+            st.text_area("Improved Resume", improved, height=300)
+
+            pdf = generate_pdf(improved)
+
+            st.download_button(
+                label="📥 Download Resume (PDF)",
+                data=pdf,
+                file_name="ATS_Optimized_Resume.pdf",
+                mime="application/pdf"
+            )
 
 st.markdown('</div>', unsafe_allow_html=True)

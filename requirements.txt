@@ -14,3 +14,4 @@ bcrypt
 python-jose
 email-validator
 psycopg2-binary
+reportlab
