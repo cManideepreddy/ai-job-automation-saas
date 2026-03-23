@@ -8,22 +8,28 @@ def get_ai_ats_feedback(resume_text, job_description):
         response = client.chat.completions.create(
             model="gpt-4o-mini",
             messages=[
-                {"role": "system", "content": "You are an ATS expert."},
-                {"role": "user", "content": f"""
-Analyze this resume vs job description.
+                {
+                    "role": "system",
+                    "content": "You are an ATS expert helping improve resumes."
+                },
+                {
+                    "role": "user",
+                    "content": f"""
+Analyze this resume against the job description.
 
 Resume:
 {resume_text}
 
-Job:
+Job Description:
 {job_description}
 
-Return:
-- pros
-- cons
-- suggestions
-- summary
-"""}
+Return structured output:
+- pros (list)
+- cons (list)
+- suggestions (list)
+- summary (text)
+"""
+                }
             ]
         )
 
@@ -41,5 +47,5 @@ Return:
             "pros": [],
             "cons": [],
             "suggestions": [],
-            "summary": f"AI error: {str(e)}"
+            "summary": f"AI temporarily unavailable"
         }

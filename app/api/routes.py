@@ -10,6 +10,7 @@ from app.services.ats_engine import compute_ats_score
 from app.services.llm_service import get_ai_ats_feedback
 from app.services.job_matcher import get_top_job_matches
 from app.services.email_service import send_job_alert_email
+from app.services.resume_rewriter import rewrite_resume
 
 from app.db.database import get_db
 from app.db.models import User, Resume, ATSResult, JobMatch
@@ -258,3 +259,23 @@ def get_users():
     return {
         "data": rows
     }
+
+
+@router.post("/rewrite-resume")
+async def rewrite_resume_api(
+        resume_text: str = Form(...),
+        job_description: str = Form(...)
+):
+    try:
+        improved = rewrite_resume(resume_text, job_description)
+
+        return {
+            "status": "success",
+            "improved_resume": improved
+        }
+
+    except Exception as e:
+        return {
+            "status": "failed",
+            "message": str(e)
+        }
